@@ -1,0 +1,175 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=2cm}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Análisis Multitemporal del Evento Black Summer en Australia 2019-2020 mediante Teledetección Satelital en QGIS}
+}
+\usepackage{float}
+
+\title{Análisis Multitemporal del Evento Black Summer en Australia 2019-2020 mediante Teledetección Satelital en QGIS}
+\author{
+  \small
+  Sara Castro, Maria Alejandra Garcia, Juan David Ortiz, Eliana Pardo, Ana Maria Romero
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introducción}
+Durante la temporada estival de 2019--2020, el sureste del continente australiano experimentó una de las perturbaciones ecológicas más severas y extensas registradas en la historia contemporánea, un fenómeno denominado a nivel global como el evento de megaincendios del ``Black Summer'' \cite{boM2020blacksummer}. Este desastre ambiental estuvo precedido por una sequía plurianual, asociada a fases climáticas fuertemente positivas del Dipolo del Océano Índico (IOD) y un patrón anómalo del Modo Anular del Sur (SAM), lo que generó un déficit extremo de humedad en el suelo y en el combustible vegetal leñoso a lo largo de la Gran Cordillera Divisoria \cite{abatzoglou2021anthropogenic}. Como consecuencia, frentes de fuego piroconvectivos de escala continental consumieron más de 24 millones de hectáreas a nivel nacional, superando ampliamente la capacidad de respuesta y mitigación de los organismos de emergencia forestal \cite{filkov2020impact}.
+
+En este contexto, la teledetección espacial y los Sistemas de Información Geográfica (SIG) son herramientas necesarias para cuantificar y caracterizar el impacto sobre los ecosistemas naturales \cite{lillesand2015remote}. Con esto en mente, el propósito de este proyecto consiste en evaluar el grado de alteración del dosel vegetal y la severidad de las quemas en el sector montañoso del Parque Nacional Kosciuszko, en el estado de Nueva Gales del Sur (NSW). A través del procesamiento digital de imágenes ópticas satelitales calibradas a nivel de reflectancia de fondo de atmósfera (BOA), se evalúan las diferencias espectrales antes y después de la conflagración.
+
+\section{Región de Interés (ROI) y Caso de Estudio}
+El caso de estudio seleccionado se sitúa en el Parque Nacional Kosciuszko, la reserva alpina y subalpina más extensa de Australia, ubicada en el extremo meridional de las Snowy Mountains en Nueva Gales del Sur (con elevaciones que alcanzan los 2.228 m s.n.m. en el Monte Kosciuszko) \cite{nsw2020kosciuszko}. Durante la crisis de enero de 2020, el parque fue azotado por frentes devastadores, principalmente por el avance del complejo de fuego de Dunns Road desde el noroeste y el complejo de Adaminaby, los cuales consumieron más de 231.000 hectáreas (aproximadamente un tercio de la reserva), afectando bosques relictos de eucalipto de ceniza de montaña (\textit{Eucalyptus delegatensis}) y turberas de turba alpina \cite{dpie2020firesevr}.
+
+Inicialmente, el alcance del proyecto contemplaba la totalidad del perímetro administrativo del parque, tal como se contextualiza en la Figura \ref{fig:mapa_contexto}, sin embargo, debido a su vasta dimensión espacial (más de 6.900 km$^2$) y con el fin de evitar un costo computacional alto, se decidió una mayor delimitación espacial orientada por el docente en un espacio de office hours. De este modo, se acotó un polígono de estudio representativo sobre el sector suroriental y alpino del parque, en las inmediaciones de Perisher Valley, Thredbo y la cuenca del lago Jindabyne como se observa en la Figura \ref{fig:roi_vector}, que permite abarcar una transición entre el bosque subalpino y las formaciones montañosas directamente expuestas al paso del fuego.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.60\textwidth]{1. Kosciuszko National Park.png}
+    \caption{Ubicación del Parque Nacional Kosciuszko.}
+    \label{fig:mapa_contexto}
+\end{figure}
+
+Para concretar esta área de trabajo en el entorno de análisis geoespacial, se estructuró una Región de Interés (ROI) poligonal delimitada por cuatro vértices cardinales (Figura \ref{fig:roi_vector} y Figura \ref{fig:usgs_coords}), trazada específicamente en coordenadas geográficas para su posterior uso:
+\begin{enumerate}
+    \item \textbf{Vértice 1 (Noroeste):} $36^\circ 41' 33''\text{ S},\; 148^\circ 20' 29''\text{ E}$
+    \item \textbf{Vértice 2 (Noreste):} $36^\circ 44' 27''\text{ S},\; 148^\circ 38' 17''\text{ E}$
+    \item \textbf{Vértice 3 (Sureste):} $36^\circ 56' 47''\text{ S},\; 148^\circ 35' 24''\text{ E}$
+    \item \textbf{Vértice 4 (Suroeste):} $36^\circ 49' 28''\text{ S},\; 147^\circ 53' 52''\text{ E}$
+\end{enumerate}
+
+De esta manera, el marco acotado concentra la variabilidad espectral necesaria para evaluar la pérdida de vitalidad del dosel, garantizando un costo computacional aceptable para el flujo de trabajo.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.60\textwidth]{2. ROI de Kosciuszko.png}
+    \caption{Polígono de la ROI seleccionada.}
+    \label{fig:roi_vector}
+\end{figure}
+
+\section{Metodología}
+La metodología aplicada sigue un esquema estructurado en cinco fases. En este caso, al ser la primera entrega, únicamente se abarcará la fase 1, fase 2, y parte de la fase 3.
+
+\subsection{Fase 1: Definición del Problema y Adquisición de Datos}
+
+\subsubsection{Criterios de Selección Temporal ($t_1$ y $t_2$)}
+Para la evaluación de un ``antes'' y un ``después'', se debe establecer una fecha sólida previa al inicio de la temporada crítica y una fecha posterior en la que se hayan disipado los productos secundarios de la combustión. Las fechas se seleccionaron de la siguiente manera:
+
+\begin{itemize}
+    \item \textbf{Condición Pre-incendio ($t\_1$ -- 26 de abril de 2019):} Una imagen capturada durante el otoño austral de 2019. Esta escena brinda condiciones de estabilidad previa a la severa desecación estival de finales de 2019. Al estar situada meses antes del inicio de los incendios en el sureste australiano, se garantiza una atmósfera libre de aerosoles o humo regional que pudieran atenuar la reflectancia en las bandas del visible e infrarrojo cercano.
+    
+    \item \textbf{Condición Post-incendio ($t\_2$ -- 11 de marzo de 2020):} Corresponde al periodo posterior a la culminación de la fase activa del fuego. Las precipitaciones generalizadas que tuvieron lugar a finales de febrero e inicios de marzo de 2020 extinguieron los frentes residuales y favorecieron el lavado atmosférico de material particulado. Esto permite la visualización directa del suelo calcinado, el depósito de cenizas y la pérdida de follaje.
+\end{itemize}
+
+\subsubsection{Fuente de Datos y Plataforma de Adquisición}
+La adquisición de las escenas satelitales se llevó a cabo mediante el portal oficial del Servicio Geológico de los Estados Unidos (\textit{USGS EarthExplorer}). A partir de las coordenadas del polígono de estudio mencionadas anteriormente, se ingresaron los puntos de búsqueda en la plataforma, ver Figura \ref{fig:usgs_coords} para identificar la escena correspondiente a la zona.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{3. Seleccion Poligono USGS.png}
+    \caption{Definición de coordenadas en EarthExplorer.}
+    \label{fig:usgs_coords}
+\end{figure}
+
+Al consultar las coberturas disponibles, se verificó la superposición de la tesela satelital sobre la zona de estudio, como se observa en la Figura \ref{fig:landsat_footprint}. Una ventaja clave de esta selección radica en que la tesela abarca la totalidad del polígono de corte de forma continua, evitando la necesidad de ensamblar mosaicos multiescena y simplificando el flujo de trabajo hacia la fase de preprocesamiento.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{4. Tesela Cobertora de la ROI.png}
+    \caption{Cobertura de la escena Landsat sobre la ROI.}
+    \label{fig:landsat_footprint}
+\end{figure}
+
+Para este estudio se seleccionaron teselas adquiridas en nivel \textbf{Collection 2 Level-2 (L2SP)}, cuyas especificaciones técnicas detalladas se resumen en la Tabla \ref{tab:metadatos_adquisicion}.
+
+\begin{table}[H]
+    \centering
+    \caption{Parámetros técnicos de adquisición de las escenas Landsat 8 OLI/TIRS.}
+    \label{tab:metadatos_adquisicion}
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        \textbf{Parámetro} & \textbf{Especificación Técnica} \\
+        \midrule
+        Misión y Sensor & Landsat 8 OLI/TIRS \\
+        Plataforma de Descarga & USGS EarthExplorer (\url{https://earthexplorer.usgs.gov/}) \\
+        Producto y Nivel & Landsat Collection 2 Level-2 Surface Reflectance (L2SP) \\
+        Referencia Espacial WRS-2 & Path 090 / Row 085 \\
+        Fecha Pre-incendio ($t_1$) & 26 de abril de 2019 \\
+        Fecha Post-incendio ($t_2$) & 11 de marzo de 2020 \\
+        Resolución Espacial Nativa & 30 metros (Bandas multiespectrales VNIR/SWIR) \\
+        Bandas Principales & B2 (Azul), B3 (Verde), B4 (Rojo), B5 (NIR), B7 (SWIR-2) \\
+        Porcentaje de Nubosidad & $< 20\%$ sobre la Región de Interés (ROI) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Fase 2: Preprocesamiento}
+
+Para garantizar que las imágenes de $t_1$ y $t_2$ sean radiométricamente comparables y geométricamente coherentes, se aplicó el siguiente flujo de preprocesamiento.
+
+\subsubsection{Verificación del Nivel de Procesamiento}
+Las escenas descargadas corresponden al producto \textbf{Landsat Collection 2 Level-2 (L2SP)}, el cual ya incluye corrección atmosférica y se encuentra calibrado a nivel de reflectancia de fondo de atmósfera (BOA). Por lo tanto, no fue necesario aplicar correcciones atmosféricas adicionales.
+
+\subsubsection{Unión de Bandas en un Ráster Multibanda}
+[Escribir aquí cómo se unieron las bandas B2, B3, B4, B5 y B7 en un solo archivo multibanda]
+
+\subsubsection{Recorte al Polígono del ROI}
+[Escribir aquí cómo se aplicó el polígono del ROI como máscara de recorte]
+
+\subsubsection{Gestión de Valores Nulos (NoData)}
+[Escribir aquí cómo se manejaron los valores nulos generados por el recorte]
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{FIGURA_AQUI.png}
+    \caption{[Descripción de la figura del ráster multibanda recortado y limpio.]}
+    \label{fig:preprocesamiento}
+\end{figure}
+
+
+\subsection{Fase 3: Procesamiento de Imágenes y Análisis}
+
+\subsubsection{Cálculo del Normalized Burn Ratio (NBR)}
+El NBR es un índice espectral diseñado para resaltar la presencia de áreas quemadas, aprovechando la diferencia de reflectancia entre el infrarrojo cercano (NIR) y el infrarrojo de onda corta (SWIR-2). Se calculó para ambas fechas mediante la siguiente expresión:
+
+\begin{equation}
+    \text{NBR} = \frac{\text{NIR} - \text{SWIR2}}{\text{NIR} + \text{SWIR2}}
+\end{equation}
+
+Donde NIR corresponde a la banda B5 y SWIR2 a la banda B7 del sensor OLI a bordo de Landsat 8.
+
+\subsubsection{Cálculo del differenced Normalized Burn Ratio (dNBR)}
+Una vez obtenidos los rásteres de NBR para $t_1$ y $t_2$, se calculó el dNBR por sustracción directa, lo cual permite cuantificar la magnitud del cambio espectral asociado a la quema:
+
+\begin{equation}
+    \text{dNBR} = \text{NBR}_{t_1} - \text{NBR}_{t_2}
+\end{equation}
+
+[Escribir aquí cómo se aplicó la Calculadora Ráster en QGIS para obtener el NBR y el dNBR.]
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{FIGURA_AQUI.png}
+    \caption{[Descripción de la figura del ráster de dNBR.]}
+    \label{fig:dnbr}
+\end{figure}
+
+\bibliographystyle{plain} 
+\bibliography{referencias}
+\end{document}
