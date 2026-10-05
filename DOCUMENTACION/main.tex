@@ -8,6 +8,7 @@
 \usepackage{geometry}
 \geometry{margin=2cm}
 \usepackage{hyperref}
+\usepackage{listings}
 \hypersetup{
     colorlinks=true,
     linkcolor=blue,
@@ -127,18 +128,137 @@ Para garantizar que las imágenes de $t_1$ y $t_2$ sean radiométricamente compa
 Las escenas descargadas corresponden al producto \textbf{Landsat Collection 2 Level-2 (L2SP)}, el cual ya incluye corrección atmosférica y se encuentra calibrado a nivel de reflectancia de fondo de atmósfera (BOA). Por lo tanto, no fue necesario aplicar correcciones atmosféricas adicionales.
 
 \subsubsection{Unión de Bandas en un Ráster Multibanda}
-[Escribir aquí cómo se unieron las bandas B2, B3, B4, B5 y B7 en un solo archivo multibanda]
-
-\subsubsection{Recorte al Polígono del ROI}
-[Escribir aquí cómo se aplicó el polígono del ROI como máscara de recorte]
-
-\subsubsection{Gestión de Valores Nulos (NoData)}
-[Escribir aquí cómo se manejaron los valores nulos generados por el recorte]
+Con el fin de facilitar el manejo conjunto de las bandas espectrales necesarias para los cálculos posteriores (NBR, dNBR), las bandas individuales \texttt{B2} (azul), \texttt{B3} (verde), \texttt{B4} (rojo), \texttt{B5} (NIR) y \texttt{B7} (SWIR2) previamente descargadas como archivos ráster de banda única del sensor OLI (Landsat~8) se combinaron en un único ráster.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{FIGURA_AQUI.png}
-    \caption{[Descripción de la figura del ráster multibanda recortado y limpio.]}
+    \includegraphics[width=0.75\linewidth]{Screenshot 2026-09-27 115127.png}
+    \caption{Bandas Cargadas}
+    \label{fig:placeholder}
+\end{figure}
+
+La unión se realizó mediante la herramienta \textbf{Construir ráster virtual} (\textit{Build Virtual Raster}) del módulo disponible en la Caja de Herramientas de Procesos de QGIS (\textit{Processing Toolbox} $\rightarrow$ \textit{GDAL} $\rightarrow$ \textit{Raster miscellaneous} $\rightarrow$ \textit{Build Virtual Raster}), habilitando la opción \textbf{``Colocar cada archivo de entrada en una banda separada''} (\textit{Place each input file into a separate band}). Esta opción es fundamental, ya que sin ella GDAL intentaría mosaicar las capas como si fueran la misma banda en distintas extensiones espaciales, en lugar de apilarlas como bandas independientes de una misma imagen.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{raster vooirtuial.png}
+    \caption{Optición QGIS}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{image settings.png}
+    \caption{Colocar cada archivo de entrada en una banda separada}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{VRT generado.png}
+    \caption{Ráster generado}
+    \label{fig:placeholder}
+\end{figure}
+
+
+El orden de entrada de los archivos determina el número de banda dentro del ráster virtual resultante, por lo que se respetó la siguiente asignación:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}ccl@{}}
+\toprule
+\textbf{Banda en el VRT} & \textbf{Banda original} & \textbf{Región espectral} \\
+\midrule
+1 & B2 & Azul \\
+2 & B3 & Verde \\
+3 & B4 & Rojo \\
+4 & B5 & Infrarrojo cercano (NIR) \\
+5 & B7 & Infrarrojo de onda corta 2 (SWIR2) \\
+\bottomrule
+\end{tabular}
+\caption{Correspondencia entre el número de banda del ráster virtual y la banda espectral original.}
+\label{tab:bandas_multibanda}
+\end{table}
+
+\paragraph{Requisitos previos verificados.}Antes de construir el ráster virtual se comprobó que todas las bandas de entrada cumplieran con:
+\begin{itemize}
+    \item El mismo sistema de referencia de coordenadas (EPSG:7856 --- GDA2020 / MGA zone 56).
+    \item La misma resolución espacial (tamaño de píxel).
+    \item La misma extensión geográfica (misma escena/\textit{path-row}).
+\end{itemize}
+Esto garantiza que el VRT alinee correctamente las bandas píxel a píxel, condición indispensable para que operaciones posteriores de band math combinen valores correspondientes al mismo punto en el terreno.
+
+\subsubsection{Recorte al Polígono del ROI}
+Para enfocar el análisis, se creó un polígono vectorial que actuara como máscara de recorte  (Figuras \ref{fig:recorte} y \ref{fig:limitador})), delimitando espacialmente el área de interés definida en secciones anteriores (Figuras \ref{fig:roi_vector} ). Para garantizar que el recorte fuera geométricamente perfecto, se utilizaron coordenadas exactas para trazar el ROI definido
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{imagrire.png}
+    \caption{Digitalización del polígono de recorte con coordenadas exactas.}
+    \label{fig:recorte}
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{{imageroi.png}}
+    \caption{Polígono limitador utilizado para el recorte de los rásteres.}
+    \label{fig:limitador}
+\end{figure}
+
+Esta capa vectorial se aplicó como máscara a cada uno de los mosaicos reproyectados (Figura \ref{fig:limitador}).
+
+El resultado fueron mosaicos recortados, libres de la información circundante no deseada y listos para el procesamiento espectral (Figuras \ref{fig:resultado} y \ref{fig:mosaicorecortado}).
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{image recorte.png}
+    \caption{Visualización del área de recorte sobre la imagen.}
+    \label{fig:resultado}
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{recortado.png}
+    \caption{Mosaico de una banda recortado al área de estudio.}
+    \label{fig:mosaicorecortado}
+\end{figure}
+
+\subsubsection{Gestión de Valores Nulos (NoData)}
+
+Los valores nulos (\texttt{NoData}) en este flujo de procesamiento no provienen únicamente del recorte espacial de la imagen, sino principalmente de la \textbf{máscara de nubes} aplicada sobre la banda \texttt{B2}. Todo píxel que no cumple con los criterios de calidad definidos en \texttt{QA\_PIXEL} (nubes, sombras de nube) se convierte explícitamente en un valor nulo, de modo que no contamine los análisis posteriores.
+
+La gestión se realiza mediante una expresión condicional de band math se evalúa si el píxel corresponde a una clase válida de \texttt{QA\_PIXEL}; si es así, se conserva el valor original de la banda, y si no, se le asigna un valor \texttt{NaN} generado artificialmente con la operación \texttt{sqrt(-1)}, ya que el motor de cálculo no dispone de una función \texttt{NaN()} nativa. De esta forma, el valor nulo queda representado de manera estándar (\texttt{NaN}) y es reconocido automáticamente como ``sin datos''.
+
+Se optó por este método porque:
+\begin{itemize}
+  \item Permite mantener la geometría y resolución original de la imagen, en lugar de eliminar píxeles (lo que rompería la estructura raster).
+  \item Evita introducir valores arbitrarios (como $-9999$ o $0$) que podrían confundirse con datos válidos y sesgar los análisis si no se enmascaran correctamente.
+\end{itemize}
+
+Esta gestión de \texttt{NoData} se aplicó en la etapa de \textbf{enmascaramiento de nubes} sobre la banda \texttt{B2}, previo al recorte espacial y a cualquier análisis posterior. Es decir, primero se identifican y anulan los píxeles contaminados por nubes/sombras, y esos valores nulos se propagan de forma consistente a través de las etapas siguientes del flujo.
+Para este proceso de uso la siguiente formula:
+
+        \begin{lstlisting}[
+        breaklines=true,
+        basicstyle=\ttfamily\small
+        ]
+        IF(
+        ("T2_AFTER_2020-03-11_B2@1" *
+        (("T2_AFTER_2020-03-11_QA_PIXEL@1" = 21824) +
+        ("T2_AFTER_2020-03-11_QA_PIXEL@1" = 21952))) > 0,
+        "T2_AFTER_2020-03-11_B2@1",
+        sqrt(-1)
+        )
+        \end{lstlisting}
+
+En esta expresión, \texttt{sqrt(-1)} es el mecanismo utilizado para generar el valor \texttt{NaN} que representa el dato nulo, mientras que la condición basada en \texttt{QA\_PIXEL} determina qué píxeles se consideran válidos y cuáles deben marcarse como \texttt{NoData}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{image.png}
+    \caption{Ráster multibanda recortado y limpio]}
     \label{fig:preprocesamiento}
 \end{figure}
 
@@ -154,6 +274,28 @@ El NBR es un índice espectral diseñado para resaltar la presencia de áreas qu
 
 Donde NIR corresponde a la banda B5 y SWIR2 a la banda B7 del sensor OLI a bordo de Landsat 8.
 
+Con las bandas ya enmascaradas, se construyó en la Calculadora Ráster la expresión correspondiente a la Ecuación~1 para cada fecha por separado:
+    \begin{lstlisting}[breaklines=true, basicstyle=\ttfamily\small]
+("NIR_masked" - "SWIR2_masked") / ("NIR_masked" + "SWIR2_masked")
+    \end{lstlisting}
+    generando dos rásteres independientes, \texttt{NBR\_t1} y \texttt{NBR\_t2}, en los cuales los píxeles afectados por nubes, sombras, nieve o cirrus quedaron representados como \texttt{NoData}, heredado directamente de la etapa de enmascaramiento.
+
+
+   \begin{figure}[H]
+       \centering
+       \includegraphics[width=1\linewidth]{1NBR.png}
+       \caption{Cálculo del Normalized Burn Ratio (NBR) Before “Black Summer”}
+       \label{fig:placeholder}
+   \end{figure}
+
+
+   \begin{figure}
+       \centering
+       \includegraphics[width=1\linewidth]{2NBR.png}
+       \caption{Cálculo del Normalized Burn Ratio (NBR) After “Black Summer”}
+       \label{fig:placeholder}
+   \end{figure}
+
 \subsubsection{Cálculo del differenced Normalized Burn Ratio (dNBR)}
 Una vez obtenidos los rásteres de NBR para $t_1$ y $t_2$, se calculó el dNBR por sustracción directa, lo cual permite cuantificar la magnitud del cambio espectral asociado a la quema:
 
@@ -161,14 +303,198 @@ Una vez obtenidos los rásteres de NBR para $t_1$ y $t_2$, se calculó el dNBR p
     \text{dNBR} = \text{NBR}_{t_1} - \text{NBR}_{t_2}
 \end{equation}
 
-[Escribir aquí cómo se aplicó la Calculadora Ráster en QGIS para obtener el NBR y el dNBR.]
+
+
+Para obtener los rásteres de \texttt{NBR} y \texttt{dNBR} se utilizó la herramienta \textbf{Calculadora Ráster} (\textit{Raster Calculator}) del software QGIS, la cual permite construir expresiones de \emph{band math} operando directamente sobre las bandas de las imágenes cargadas como capas ráster. El procesamiento se realizó en tres etapas secuenciales:
+
+ Finalmente, se restaron ambos rásteres de NBR (Ecuación~2) verificando explícitamente que ninguno de los dos operandos fuera nulo en cada píxel, para evitar que la resta generara valores de cambio artificiales en zonas sin información válida en alguna de las dos fechas:
+    \begin{lstlisting}[breaklines=true, basicstyle=\ttfamily\small]
+IF( ("NBR_t1" / "NBR_t1" != 1) OR ("NBR_t2" / "NBR_t2" != 1),
+    sqrt(-1),
+    "NBR_t1" - "NBR_t2" )
+    \end{lstlisting}
+    Esta verificación se apoya en la propiedad de que, para cualquier valor $x$ distinto de \texttt{NaN}, $x/x = 1$; si $x$ es \texttt{NaN}, la división también lo es, permitiendo detectar y propagar los valores nulos sin depender de una función \texttt{isnan()} nativa.
+
+
+El resultado final es el ráster \texttt{dNBR}, en el cual los valores positivos indican pérdida de vigor vegetal (zonas potencialmente quemadas) y los valores negativos indican ganancia de vigor vegetal o cambios no asociados al fuego, mientras que los píxeles sin información suficiente en $t_1$ o $t_2$ permanecen como \texttt{NoData}.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{FIGURA_AQUI.png}
-    \caption{[Descripción de la figura del ráster de dNBR.]}
-    \label{fig:dnbr}
+    \includegraphics[width=1\linewidth]{dNBRLayout.png}
+    \caption{Ráster de dNBR}
+    \label{fig:placeholder}
 \end{figure}
+
+\subsubsection{Reclasificación del dNBR por Umbrales Estandarizados (USGS)}
+A partir del ráster de\texttt{dNBR}, se procedió a categorizar los niveles de afectación del dosel vegetal mediante el método de umbralización (\textit{thresholding}). Para esto, se adoptaron los intervalos de severidad de quema estandarizados por el Servicio Geológico de los Estados Unidos (\textit{USGS}), los cuales clasifican la magnitud del cambio espectral en cuatro categorías, tal como se detalla a continuación.
+
+\begin{table}[H]
+    \centering
+    \caption{Intervalos de severidad estandarizados por el USGS para la clasificación del dNBR.}
+    \label{tab:umbrales_usgs}
+    \begin{tabular}{@{}ccl@{}}
+        \toprule
+        \textbf{Rango dNBR} & \textbf{Código Entero} & \textbf{Clase / Nivel de Severidad} \\
+        \midrule
+        $\text{dNBR} < 0{,}10$ & 1 & No quemado / Sin alteración \\
+        $0{,}10 \le \text{dNBR} < 0{,}27$ & 2 & Severidad baja \\
+        $0{,}27 \le \text{dNBR} < 0{,}66$ & 3 & Severidad moderada \\
+        $\text{dNBR} \ge 0{,}66$ & 4 & Severidad alta \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Para este procedimiento, se utilizó la Calculadora Ráster, ver Figura \ref{fig:calc_umbrales}. La lógica es que cada rango de dNBR se evalúa como una proposición lógica binaria (verdadero = 1, falso = 0) y se multiplica por su código entero correspondiente (1 a 4). Al sumar las cuatro condiciones, cada píxel queda clasificado con un único valor de severidad.
+
+\begin{lstlisting}[breaklines=true, basicstyle=\ttfamily\small]
+("dNBR@1" < 0.10) * 1 + 
+(("dNBR@1" >= 0.10) AND ("dNBR@1" < 0.27)) * 2 + 
+(("dNBR@1" >= 0.27) AND ("dNBR@1" < 0.66)) * 3 + 
+("dNBR@1" >= 0.66) * 4
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{Calc raster dNBR por umbrales.png}
+    \caption{Implementación de la expresión de reclasificación}
+    \label{fig:calc_umbrales}
+\end{figure}
+
+Como resultado de esta operación se generó un ráster monocromático, ver Figura \ref{fig:raster_raw}. Al evaluar las estadísticas descriptivas y el rango resultante del raster, se constató que los valores fluctúan estrictamente entre un mínimo de $-0{,}1362$ y un valor máximo de $+0{,}3145$, ver Figura \ref{fig:min_max}
+
+\begin{figure}[H]
+    \centering
+        \centering
+        \includegraphics[width=\textwidth]{Raster clasificacion por umbrales.png}
+        \caption{Ráster discreto resultante antes de la asignación de simbología.}
+        \label{fig:raster_raw}
+\end{figure}
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{Valores minimos y maximos raster clasificacion.png}
+        \caption{Rango dinámico de valores mínimos y máximos del ráster dNBR.}
+        \label{fig:min_max}
+
+\end{figure}
+
+Este techo de $\approx 0{,}31$ explica por qué no se registra presencia de la clase 4 (Severidad alta) en el área de estudio. Físicamente, esta condición se debe a dos causas:
+\begin{enumerate}
+    \item \textbf{Delimitación geográfica del ROI:} Los focos de fuego de escala continental asociados a los complejos de \textit{Dunns Road} y \textit{Adaminaby} impactaron masivamente el norte y noroeste del Parque Nacional Kosciuszko. La ROI delimitada sobre el sector meridional (Perisher Valley, Thredbo y la cuenca de Jindabyne) abarcó frentes periféricos y lenguas de fuego secundarias, registrando perturbaciones más localizadas.
+    \item \textbf{Estructura vegetal y dinámica temporal:} A diferencia de formaciones de bosque denso de eucaliptos con alta carga de biomasa leñosa, las zonas altas de Kosciuszko están dominadas por brezales bajos, pastizales alpinos y turberas. La quema de pastos genera un contraste radiométrico menor entre el NIR y el SWIR-2 en comparación con el colapso de un dosel arbóreo maduro. Adicionalmente, las precipitaciones ocurridas entre finales de febrero y la toma de $t_2$ (11 de marzo de 2020) lavaron los depósitos superficiales de ceniza y promovieron una incipiente recuperación fenológica, amortiguando la señal de severidad.
+\end{enumerate}
+
+Posteriormente, para una mejor identificación, a través de las propiedades de capa se configuró una simbología de tipo "Valores en paleta/únicos", donde al clasificar, se identificaron las clases 1 (No quemado), 2 (Baja severidad) y 3 (Moderada severidad), a las cuales se les asignó un color acorde con la convención temática: verde para áreas poco afectadas o con rebrote, amarillo para cicatrices de baja severidad y naranja para severidad moderada, como se observa en la Figura \ref{fig:simbologia_paleta}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{Asignacion de colores a umbrales.png}
+    \caption{Configuración de paleta de colores para las clases discretas de severidad.}
+    \label{fig:simbologia_paleta}
+\end{figure}
+
+La distribución espacial final, observada en la Figura \ref{fig:mapa_impacto}, se evidencia que la gran mayoría de la superficie permaneció sin afectación directa (representada en verde), mientras que las cicatrices del incendio se disponen en parches discontinuos concentrados en el sector central y oriental del polígono. Es importante recordar que los vacíos corresponden a los valores nulos propagados del enmascaramiento de nubes y sombras.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Impacto de quema.png}
+    \caption{Distribución espacial de las clases de severidad del incendio sobre la ROI.}
+    \label{fig:mapa_impacto}
+\end{figure}
+
+\subsubsection{Clasificación Supervisada de Coberturas ($t_1$ y $t_2$)}
+
+\section{Fase 4: Post-procesamiento y Discusión}
+
+\subsection{Vectorización y Extracción de Polígonos de Cambio}
+Una vez se obtuvo el ráster de severidad debidamente categorizado, se procedió a convertir los datos matriciales en entidades vectoriales para cuantificar espacialmente el daño y facilitar los análisis comparativos. 
+
+Para esto, se utilizó la herramienta de poligonizar (ráster a vectorial) en el menú de conversión ráster, definiendo el campo \texttt{clase\_id} para almacenar el identificador numérico de cada categoría y exportando el resultado en formato GeoPackage (\texttt{severidad\_poligonos\_raw.gpkg}), tal como se observa en la Figura \ref{fig:poligonizar}. La capa vectorial resultante generó una malla completa de polígonos sobre el área del polígono de estudio, visible en la Figura \ref{fig:poligonos_raw}.
+
+\begin{figure}[H]
+    \centering
+        \centering
+        \includegraphics[width=0.75\textwidth]{Conversion a poligono.png}
+        \caption{Configuración de la herramienta Poligonizar.}
+        \label{fig:poligonizar}
+\end{figure}
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{Poligono resultante.png}
+        \caption{Capa vectorial de polígonos resultante.}
+        \label{fig:poligonos_raw}
+\end{figure}
+
+Posteriormente, se abrió la tabla de atributos de la capa vectorial para estructurar la información temática y métrica mediante la calculadora de campos. Primero, se creó el campo de texto \texttt{severidad} asignando la etiqueta correspondiente a cada valor entero mediante condicionales, ver Figura \ref{fig:campo_severidad}:
+
+\begin{lstlisting}[breaklines=true, basicstyle=\ttfamily\small]
+CASE 
+    WHEN "clase_id" = 1 THEN 'No quemado'
+    WHEN "clase_id" = 2 THEN 'Baja severidad'
+    WHEN "clase_id" = 3 THEN 'Moderada severidad'
+    WHEN "clase_id" = 4 THEN 'Alta severidad'
+    ELSE 'Sin datos'
+END
+\end{lstlisting}
+
+En segundo lugar, se calculó la extensión superficial de cada polígono creando el campo numérico decimal \texttt{area\_ha} mediante la expresión \texttt{\$area / 10000}, ver Figura \ref{fig:campo_area}. Al trabajar bajo el sistema proyectado oficial EPSG:7856, la variable geométrica nativa entrega el área en metros cuadrados, por lo cual la división permite obtener el valor directo en hectáreas.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Creacion de campo severidad.png}
+        \caption{Creación del campo de severidad.}
+        \label{fig:campo_severidad}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Creacion de campo area.png}
+        \caption{Cálculo del área en hectáreas.}
+        \label{fig:campo_area}
+    \end{minipage}
+\end{figure}
+
+El resultado de estas operaciones en la tabla de atributos se observa en la Figura \ref{fig:tabla_atributos}, donde cada objeto cuenta con su clase numérica, denominación temática y superficie individual calculada. Cabe señalar que los polígonos se conservaron de forma individual y no se aplicó una operación de disolución (\textit{dissolve}), con el fin de preservar la delimitación exacta de las celdas y permitir que la etapa de evaluación de exactitud cuente con geometrías de referencia independientes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{Tabla de atributos resultante.png}
+    \caption{Tabla de atributos final con los campos calculados.}
+    \label{fig:tabla_atributos}
+\end{figure}
+
+Finalmente, con el fin de aislar las zonas que efectivamente sufrieron afectación por el fuego de aquellas intactas, se ejecutó la herramienta extraer por atributo, filtrando los objetos espaciales donde el campo \texttt{clase\_id} fuera mayor a $1$ (\texttt{clase\_id > 1}), ver Figura \ref{fig:extraccion}. Esta operación generó la capa vectorial final \texttt{cicatriz\_incendio\_kosciuszko.gpkg}, la cual reúne exclusivamente los polígonos de baja y moderada severidad, como se presenta en la Figura \ref{fig:cicatriz_final}.
+
+\begin{figure}[H]
+    \centering
+        \centering
+        \includegraphics[width=0.75\textwidth]{Extraccion por atributo.png}
+        \caption{Extracción de entidades quemadas.}
+        \label{fig:extraccion}
+\end{figure}
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{Cicatriz de incendio.png}
+        \caption{Cicatrices de quema aisladas sobre el área de estudio.}
+        \label{fig:cicatriz_final}
+   
+\end{figure}
+
+
+\subsection{Análisis de Transición Multitemporal (Matriz From-To)}
+
+\subsection{Evaluación de Exactitud Temática (Accuracy Assessment)}
+
+\subsection{Cuantificación y Estadísticas Zonales}
+
+\subsection{Cartografía y Salidas Gráficas}
+% - Layouts
+
+\section{Conclusiones}
+
+\bibliographystyle{plain}
+\bibliography{referencias}
+
 
 \bibliographystyle{plain} 
 \bibliography{referencias}
